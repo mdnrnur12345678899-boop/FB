@@ -20,12 +20,13 @@ def send_telegram_message(chat_id, text, reply_markup=None):
     except Exception as e:
         print(f"Telegram Error: {e}")
 
-# --- BACKROUND REAL BROWSER AUTOMATION STEP-BY-STEP ---
+# --- BACKGROUND REAL BROWSER AUTOMATION WITH LIVE LOGS ---
 def run_facebook_automation_flow(chat_id, phone_number):
-    send_telegram_message(chat_id, f"🚀 Starting FB Automation for phone: `+{phone_number}`\n⏳ Please wait 8-10 seconds...")
+    send_telegram_message(chat_id, f"🚀 **Task Started** for phone: `+{phone_number}`")
 
     try:
         with sync_playwright() as p:
+            send_telegram_message(chat_id, "🔧 Initializing Chromium Browser engine...")
             browser = p.chromium.launch(
                 headless=True, 
                 args=[
@@ -44,30 +45,35 @@ def run_facebook_automation_flow(chat_id, phone_number):
             
             page = context.new_page()
 
-            # স্টেপ ১: নির্দিষ্ট লিংকে যাওয়া
-            send_telegram_message(chat_id, "🌐 Opening limited.facebook.com/reg/ ...")
+            # স্টেপ ১: লিংক ওপেন করা
+            target_url = "https://limited.facebook.com/reg/"
+            send_telegram_message(chat_id, f"🌐 Opening Link: `{target_url}` ...")
+            
             try:
-                page.goto("https://limited.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
-            except:
+                page.goto(target_url, timeout=60000, wait_until="domcontentloaded")
+                send_telegram_message(chat_id, "✅ Link successfully opened and loaded!")
+            except Exception as ex:
+                send_telegram_message(chat_id, f"⚠️ `limited.facebook.com` failed, switching to `m.facebook.com/reg/`...")
                 page.goto("https://m.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
+                send_telegram_message(chat_id, "✅ Backup link successfully opened!")
 
             time.sleep(2)
 
-            # রেন্ডম নাম এবং বয়স জেনারেট করা (18+ অর্থাৎ ১৯৯৫ থেকে ২০০৩ এর মধ্যে)
+            # রেন্ডম ডাটা জেনারেট
             names = [
                 ("David", "Smith"), ("James", "Johnson"), ("Mary", "Miller"), 
                 ("Patricia", "Davis"), ("John", "Williams"), ("Robert", "Brown"),
                 ("Michael", "Jones"), ("William", "Garcia"), ("Jennifer", "Rodriguez")
             ]
             f_name, l_name = random.choice(names)
-            birth_year = str(random.randint(1995, 2003))
+            birth_year = str(random.randint(1995, 2003)) # 18+ বয়স নিশ্চিত করতে
             birth_month = str(random.randint(1, 12))
             birth_day = str(random.randint(1, 28))
             gender_val = random.choice(["1", "2"]) # 1=Female, 2=Male
+            gender_name = "Female" if gender_val == "1" else "Male"
 
-            # স্টেপ ২ থেকে ৮ পর্যন্ত ব্রাউজারে অটো ফিল এবং ক্লিক করার মূল স্ক্রিপ্ট
-            send_telegram_message(chat_id, "✍️ Auto-filling Name, Age, Phone, Gender & Password...")
-            
+            # স্টেপ ২: Firstname এবং Surname বসানো
+            send_telegram_message(chat_id, f"✍️ Step 1: Setting Name -> **{f_name} {l_name}**")
             page.evaluate("""(data) => {
                 function setVal(element, value) {
                     const setter = Object.getOwnPropertyDescriptor(element, 'value')?.set || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value')?.set;
@@ -75,20 +81,18 @@ def run_facebook_automation_flow(chat_id, phone_number):
                     element.dispatchEvent(new Event('input', { bubbles: true }));
                     element.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-
-                // ১. Firstname এবং Surname বসানো
                 const fInput = document.querySelector('input[name="firstname"]') || document.querySelector('input[name="first_name"]');
                 const lInput = document.querySelector('input[name="lastname"]') || document.querySelector('input[name="last_name"]');
                 if (fInput && lInput) { setVal(fInput, data.fName); setVal(lInput, data.lName); }
             }""", {"fName": f_name, "lName": l_name})
 
             time.sleep(1)
-            
-            # প্রথম নেক্সট ক্লিক (Name এর পর)
+            send_telegram_message(chat_id, "🖱️ Clicking 'Next' after name...")
             click_next_button(page)
             time.sleep(2)
 
-            # ২. 18+ রেন্ডম বয়স (Birthday) বসানো এবং নেক্সট ক্লিক
+            # স্টেপ ৩: 18+ বয়স (Birthday) বসানো
+            send_telegram_message(chat_id, f"🎂 Step 2: Setting Random 18+ Age -> **{birth_day}/{birth_month}/{birth_year}**")
             page.evaluate("""(data) => {
                 const yr = document.querySelector('select[name="birthday_year"]');
                 const mo = document.querySelector('select[name="birthday_month"]');
@@ -102,10 +106,12 @@ def run_facebook_automation_flow(chat_id, phone_number):
             }""", {"birthYear": birth_year, "birthMonth": birth_month, "birthDay": birth_day})
 
             time.sleep(1)
+            send_telegram_message(chat_id, "🖱️ Clicking 'Next' after age...")
             click_next_button(page)
             time.sleep(2)
 
-            # ৩. ফোন নাম্বার বসানো এবং নেক্সট ক্লিক
+            # স্টেপ ৪: ফোন নম্বর বসানো
+            send_telegram_message(chat_id, f"📱 Step 3: Setting Phone Number -> **+{phone_number}**")
             page.evaluate("""(phone) => {
                 const pInput = document.querySelector('input[name="reg_email__"]') || document.querySelector('input[type="tel"]');
                 if (pInput) {
@@ -117,10 +123,12 @@ def run_facebook_automation_flow(chat_id, phone_number):
             }""", phone_number)
 
             time.sleep(1)
+            send_telegram_message(chat_id, "🖱️ Clicking 'Next' after phone number...")
             click_next_button(page)
             time.sleep(2)
 
-            # ৪. জেন্ডার সিলেক্ট করা এবং নেক্সট ক্লিক
+            # স্টেপ ৫: জেন্ডার সিলেক্ট করা
+            send_telegram_message(chat_id, f"⚥ Step 4: Selecting Gender -> **{gender_name}**")
             page.evaluate("""(gender) => {
                 const gRadio = document.querySelector(`input[name="sex"][value="${gender}"]`);
                 if (gRadio) { 
@@ -131,10 +139,12 @@ def run_facebook_automation_flow(chat_id, phone_number):
             }""", gender_val)
 
             time.sleep(1)
+            send_telegram_message(chat_id, "🖱️ Clicking 'Next' after gender...")
             click_next_button(page)
             time.sleep(2)
 
-            # ৫. পাসওয়ার্ড (mdnur1234) বসানো এবং সাইন আপ / ফাইনাল ক্লিক
+            # স্টেপ ৬: পাসওয়ার্ড (mdnur1234) বসানো
+            send_telegram_message(chat_id, f"🔑 Step 5: Setting Fixed Password -> **{FIXED_PASSWORD}**")
             page.evaluate("""(password) => {
                 const pwdInput = document.querySelector('input[type="password"]') || document.querySelector('input[name="reg_passwd__"]');
                 if (pwdInput) {
@@ -147,17 +157,17 @@ def run_facebook_automation_flow(chat_id, phone_number):
 
             time.sleep(1)
             
-            # ফাইনাল সাইন আপ / রেজিস্টার বাটনে ক্লিক
-            send_telegram_message(chat_id, "🖱️ Clicking final Sign Up button...")
+            # স্টেপ ৭: ফাইনাল সাইন আপ ক্লিক
+            send_telegram_message(chat_id, "🖱️ Step 6: Clicking final 'Sign Up' button...")
             click_signup_button(page)
 
-            # স্টেপ ৯: ৮-১০ সেকেন্ড প্রসেসিং হওয়া এবং কুকি থেকে UID বের করা
-            send_telegram_message(chat_id, "⏳ Processing (8-10 seconds) & capturing UID/Cookies...")
+            # স্টেপ ৮: ৮-১০ সেকেন্ড প্রসেসিং ও কুকি ক্যাপচার
+            send_telegram_message(chat_id, "⏳ Processing (8-10 seconds) & capturing real UID/Cookies...")
             
             uid = None
             cookie_string = ""
             
-            for _ in range(12): # প্রায় ১২ সেকেন্ড ট্র্যাকিং চলবে
+            for i in range(12):
                 time.sleep(1)
                 cookies = context.cookies()
                 cookie_parts = []
@@ -171,7 +181,7 @@ def run_facebook_automation_flow(chat_id, phone_number):
 
             browser.close()
 
-            # ফলাফল টেলিগ্রাম বটে পাঠানো
+            # ফাইনাল আউটপুট
             if uid:
                 success_msg = (
                     f"🎉 **Account Created Successfully!**\n\n"
@@ -182,12 +192,11 @@ def run_facebook_automation_flow(chat_id, phone_number):
                 )
                 send_telegram_message(chat_id, success_msg)
             else:
-                send_telegram_message(chat_id, f"⚠️ Automation completed for `+{phone_number}`, but `c_user` cookie was not caught. (The number might require OTP verification or already registered).")
+                send_telegram_message(chat_id, f"⚠️ Automation finished for `+{phone_number}`, but `c_user` cookie was not caught. (The number might require OTP code or already taken).")
 
     except Exception as e:
-        send_telegram_message(chat_id, f"❌ Automation Process Error: {str(e)}")
+        send_telegram_message(chat_id, f"❌ Automation Critical Error: {str(e)}")
 
-# সহায়ক ক্লিক ফাংশনসমূহ
 def click_next_button(page):
     try:
         page.evaluate("""() => {
@@ -218,16 +227,16 @@ def click_signup_button(page):
     except:
         pass
 
-# --- TELEGRAM BOT ROUTING ---
+# --- TELEGRAM BOT INTERFACE ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(types.KeyboardButton("🚀 Create Account"))
     
     welcome_text = (
-        "🤖 **FB Auto Account Creator Bot**\n\n"
-        "• পাসওয়ার্ড ফিক্সড করা আছে: `mdnur1234`\n"
-        "• নাম, বয়স, জেন্ডার অটোমেটিক রেন্ডম নিয়ে নিবে।\n\n"
+        "🤖 **FB Live Log Account Creator Bot**\n\n"
+        "• পাসওয়ার্ড ফিক্সড: `mdnur1234`\n"
+        "• প্রতিটি স্টেপের লাইভ আপডেট দেখতে পাবেন।\n\n"
         "নিচের **'🚀 Create Account'** বাটনে ক্লিক করুন:"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=keyboard, parse_mode="Markdown")
@@ -247,12 +256,12 @@ def handle_text(message):
         clean_phone = text.replace("+", "").strip()
         user_states[chat_id] = None
         
-        bot.send_message(chat_id, f"⏳ Task accepted for `+{clean_phone}`. Starting background process...")
+        bot.send_message(chat_id, f"⏳ Task queued for `+{clean_phone}`...")
         threading.Thread(target=run_facebook_flow, args=(chat_id, clean_phone)).start()
 
 @app.route('/')
 def home():
-    return "FB Auto Creator Bot is active!"
+    return "FB Live Log Bot is active!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 3000))
@@ -264,5 +273,5 @@ if __name__ == '__main__':
         bot.remove_webhook()
     except:
         pass
-    print("Bot started successfully...")
+    print("Bot with Live Logs started...")
     bot.infinity_polling(skip_pending=True)
