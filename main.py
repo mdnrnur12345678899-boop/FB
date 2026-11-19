@@ -22,11 +22,10 @@ def send_telegram_message(chat_id, text, reply_markup=None):
         print(f"Telegram Error: {e}")
 
 def run_real_facebook_automation(chat_id, password, phone_number):
-    send_telegram_message(chat_id, f"📱 Processing Real Browser for: `+{phone_number}`\n🚀 Launching Chromium...")
+    send_telegram_message(chat_id, f"⚡ Starting Limited FB Automation for: `+{phone_number}`")
 
     try:
         with sync_playwright() as p:
-            # ব্রাউজার ওপেন করা (একটু বড় ভিউপোর্ট সাইজ দিয়ে যাতে মোবাইল রেসপন্সিভ সাইট ফুল লোড হয়)
             browser = p.chromium.launch(
                 headless=True, 
                 args=[
@@ -37,75 +36,102 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                 ]
             )
             
+            # মোবাইল ইউজার এজেন্ট সেট করা (আপনার অ্যান্ড্রয়েড অ্যাপের মতো)
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+                user_agent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
                 viewport={"width": 390, "height": 844},
                 locale="en-US"
             )
             
             page = context.new_page()
 
-            send_telegram_message(chat_id, "🌐 Navigating to Facebook Registration...")
+            send_telegram_message(chat_id, "🌐 Opening limited.facebook.com/reg/ ...")
             
-            # ফেসবুকের মূল ডেস্কটপ বা এম-বেসিক ট্রাই না করে সরাসরি রিং বা সাইনআপ পেজ হিট করা
+            # আপনি যেটা চাচ্ছেন: সরাসরি limited.facebook.com অথবা m.facebook.com/reg/ এ যাওয়া
             try:
-                page.goto("https://www.facebook.com/r.php", timeout=60000, wait_until="domcontentloaded")
+                page.goto("https://limited.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
             except:
                 page.goto("https://m.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
 
-            # পেজ পুরোপুরি লোড হওয়ার জন্য ৫ সেকেন্ড অপেক্ষা
-            time.sleep(5)
+            time.sleep(3)
+            send_telegram_message(chat_id, "✍️ Auto-filling name, bday, phone & password...")
 
-            send_telegram_message(chat_id, "✍️ Filling registration details...")
-
-            names = [("David", "Smith"), ("James", "Johnson"), ("Mary", "Miller"), ("Patricia", "Davis"), ("John", "Williams")]
+            # রেন্ডম নাম
+            names = [("David", "Smith"), ("James", "Johnson"), ("Mary", "Miller"), ("Patricia", "Davis"), ("John", "Williams"), ("Robert", "Brown")]
             f_name, l_name = random.choice(names)
 
-            # এলিমেন্টগুলো আসার জন্য সেফ ওয়েটিং (ডেস্কটপ এবং মোবাইল দুই ভার্সনের সিলেক্টর হ্যান্ডেল করার জন্য)
-            try:
-                page.wait_for_selector('input[name="firstname"], input[name="first_name"]', timeout=15000)
-            except:
-                pass
+            birth_year = str(random.randint(1995, 2003))
+            birth_month = str(random.randint(1, 12))
+            birth_day = str(random.randint(1, 28))
 
-            # ফর্ম ফিলআপ (বিভিন্ন সিলেক্টর ট্রাই করবে)
-            try:
-                page.fill('input[name="firstname"], input[name="first_name"]', f_name)
-                page.fill('input[name="lastname"], input[name="last_name"]', l_name)
-            except Exception as ex:
-                print(f"Name fill error: {ex}")
+            # আপনার অ্যান্ড্রয়েড অ্যাপের লজিকের আদলে জাভাস্ক্রিপ্ট ইভালুয়েট করে ফর্মে ডাটা বসানো (সবচেয়ে ফাস্ট ও কার্যকরী পদ্ধতি)
+            page.evaluate("""(data) => {
+                function setVal(element, value) {
+                    const setter = Object.getOwnPropertyDescriptor(element, 'value')?.set || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value')?.set;
+                    if (setter) setter.call(element, value); else element.value = value;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                }
 
-            # জন্মতারিখ
-            try:
-                page.select_option('select[name="birthday_year"], select#year', str(random.randint(1995, 2003)))
-                page.select_option('select[name="birthday_month"], select#month', str(random.randint(1, 12)))
-                page.select_option('select[name="birthday_day"], select#day', str(random.randint(1, 28)))
-            except:
-                pass
+                // নাম
+                const fInput = document.querySelector('input[name="firstname"]') || document.querySelector('input[name="first_name"]');
+                const lInput = document.querySelector('input[name="lastname"]') || document.querySelector('input[name="last_name"]');
+                if (fInput && lInput) { setVal(fInput, data.fName); setVal(lInput, data.lName); }
 
-            # ফোন নম্বর ও পাসওয়ার্ড
-            try:
-                page.fill('input[name="reg_email__"], input[name="email"], input[name="reg_email_confirmation__"]', phone_number)
-                page.fill('input[type="password"], input[name="reg_passwd__"]', password)
-            except Exception as ex:
-                print(f"Phone/Pass fill error: {ex}")
+                // জন্মতারিখ
+                const yr = document.querySelector('select[name="birthday_year"]');
+                const mo = document.querySelector('select[name="birthday_month"]');
+                const dy = document.querySelector('select[name="birthday_day"]');
+                if (yr && mo && dy) {
+                    yr.value = data.birthYear; mo.value = data.birthMonth; dy.value = data.birthDay;
+                    yr.dispatchEvent(new Event('change', { bubbles: true }));
+                    mo.dispatchEvent(new Event('change', { bubbles: true }));
+                    dy.dispatchEvent(new Event('change', { bubbles: true }));
+                }
 
-            # জেন্ডার (Male = 2)
-            try:
-                page.click('input[name="sex"][value="2"], input#u_0_5_', timeout=3000)
-            except:
-                pass
+                // ফোন নম্বর
+                const pInput = document.querySelector('input[name="reg_email__"]') || document.querySelector('input[type="tel"]');
+                if (pInput) { setVal(pInput, data.phone); }
 
-            send_telegram_message(chat_id, "🖱️ Clicking Register / Sign Up button...")
-            try:
-                page.click('button[type="submit"], input[type="submit"], button[name="websubmit"]', timeout=5000)
-            except:
-                pass
+                // জেন্ডার (Male = 2)
+                const gRadio = document.querySelector('input[name="sex"][value="2"]');
+                if (gRadio) { gRadio.click(); gRadio.checked = true; gRadio.dispatchEvent(new Event('change', { bubbles: true })); }
 
-            send_telegram_message(chat_id, "🔍 Capturing Real UID & Cookies...")
+                // পাসওয়ার্ড
+                const pwdInput = document.querySelector('input[type="password"]') || document.querySelector('input[name="reg_passwd__"]');
+                if (pwdInput) { setVal(pwdInput, data.password); }
+            }""", {
+                "fName": f_name,
+                "lName": l_name,
+                "birthYear": birth_year,
+                "birthMonth": birth_month,
+                "birthDay": birth_day,
+                "phone": phone_number,
+                "password": password
+            })
+
+            time.sleep(2)
+            send_telegram_message(chat_id, "🖱️ Clicking Next / Sign Up button automatically...")
+
+            # নেক্সট বা সাইন আপ বাটনে ক্লিক করা
+            page.evaluate("""() => {
+                const buttons = document.querySelectorAll('button, input[type="submit"], div[role="button"]');
+                for (let b of buttons) {
+                    const t = (b.innerText || b.value || b.getAttribute('aria-label') || '').toLowerCase();
+                    if (t.includes('next') || t.includes('sign up') || t.includes('পরবর্তী') || t.includes('continue') || t.includes('সাইন আপ')) {
+                        b.click();
+                        break;
+                    }
+                }
+            """)
+
+            send_telegram_message(chat_id, "🔍 Waiting for registration completion & capturing cookies...")
+            
             uid = None
             cookie_string = ""
             
-            for _ in range(15):
+            # সর্বোচ্চ ২০ সেকেন্ড সময় নিয়ে কুকি ও UID ট্র্যাক করা
+            for _ in range(20):
                 time.sleep(1)
                 cookies = context.cookies()
                 cookie_parts = []
@@ -121,7 +147,7 @@ def run_real_facebook_automation(chat_id, password, phone_number):
 
             if uid:
                 success_msg = (
-                    f"🎉 **Real Account Created Successfully!**\n\n"
+                    f"🎉 **Limited FB Account Created Successfully!**\n\n"
                     f"👤 **Real UID:** `{uid}`\n"
                     f"📱 **Phone:** `+{phone_number}`\n"
                     f"🔑 **Pass:** `{password}`\n\n"
@@ -129,10 +155,10 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                 )
                 send_telegram_message(chat_id, success_msg)
             else:
-                send_telegram_message(chat_id, f"⚠️ Automation finished, but `c_user` cookie was not captured. Number: +{phone_number}. (Account might need OTP or verification).")
+                send_telegram_message(chat_id, f"⚠️ Automation executed on limited.facebook.com, but `c_user` cookie was not caught instantly. Number: +{phone_number}. (Check if OTP verification page appeared).")
 
     except Exception as e:
-        send_telegram_message(chat_id, f"❌ Real Browser Automation Error: {str(e)}")
+        send_telegram_message(chat_id, f"❌ Automation Error: {str(e)}")
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -141,9 +167,9 @@ def send_welcome(message):
     keyboard.add(types.KeyboardButton("🔑 Set Password"))
     
     welcome_text = (
-        "🤖 **Render Real Browser FB Automation Bot**\n\n"
+        "🤖 **Limited FB Automation Bot**\n\n"
         "1. প্রথমে **'🔑 Set Password'** এ ক্লিক করে পাসওয়ার্ড দিন।\n"
-        "2. এরপর **'🚀 FB Automation'** এ ক্লিক করে আপনার ম্যানুয়াল ফোন নম্বরটি পাঠান।"
+        "2. এরপর **'🚀 FB Automation'** এ ক্লিক করে আপনার ফোন নম্বরটি পাঠান।"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=keyboard, parse_mode="Markdown")
 
@@ -161,7 +187,7 @@ def ask_phone(message):
         user_states[message.chat.id] = "WAITING_FOR_PHONE"
         bot.send_message(message.chat.id, "✍️ অনুগ্রহ করে আপনার ফোন নম্বরটি লিখুন (যেমন: `237691137000`):")
 
-@bot.message_handler(func=lambda msg: True)
+@bot.message_handler(func=lambda msg: msg.text and not msg.text.startswith('/'))
 def handle_text(message):
     chat_id = message.chat.id
     text = message.text.strip()
@@ -177,12 +203,12 @@ def handle_text(message):
         user_states[chat_id] = None
         password = user_passwords.get(chat_id)
         
-        bot.send_message(chat_id, f"⏳ Initializing real browser for `+{clean_phone}`...")
+        bot.send_message(chat_id, f"⏳ Running automation on limited.facebook.com for `+{clean_phone}`...")
         threading.Thread(target=run_real_facebook_automation, args=(chat_id, password, clean_phone)).start()
 
 @app.route('/')
 def home():
-    return "Render Playwright Bot is live and running!"
+    return "Limited FB Automation Bot is live!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 3000))
