@@ -36,7 +36,6 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                 ]
             )
             
-            # মোবাইল ইউজার এজেন্ট সেট করা (আপনার অ্যান্ড্রয়েড অ্যাপের মতো)
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
                 viewport={"width": 390, "height": 844},
@@ -44,19 +43,16 @@ def run_real_facebook_automation(chat_id, password, phone_number):
             )
             
             page = context.new_page()
-
             send_telegram_message(chat_id, "🌐 Opening limited.facebook.com/reg/ ...")
             
-            # আপনি যেটা চাচ্ছেন: সরাসরি limited.facebook.com অথবা m.facebook.com/reg/ এ যাওয়া
             try:
                 page.goto("https://limited.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
             except:
                 page.goto("https://m.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
 
             time.sleep(3)
-            send_telegram_message(chat_id, "✍️ Auto-filling name, bday, phone & password...")
+            send_telegram_message(chat_id, "✍️ Auto-filling details...")
 
-            # রেন্ডম নাম
             names = [("David", "Smith"), ("James", "Johnson"), ("Mary", "Miller"), ("Patricia", "Davis"), ("John", "Williams"), ("Robert", "Brown")]
             f_name, l_name = random.choice(names)
 
@@ -64,7 +60,7 @@ def run_real_facebook_automation(chat_id, password, phone_number):
             birth_month = str(random.randint(1, 12))
             birth_day = str(random.randint(1, 28))
 
-            # আপনার অ্যান্ড্রয়েড অ্যাপের লজিকের আদলে জাভাস্ক্রিপ্ট ইভালুয়েট করে ফর্মে ডাটা বসানো (সবচেয়ে ফাস্ট ও কার্যকরী পদ্ধতি)
+            # ফিক্সড ও কারেক্ট জাভাস্ক্রিপ্ট অটোমেশন ইনজেকশন (সিনট্যাক্স এরর মুক্ত)
             page.evaluate("""(data) => {
                 function setVal(element, value) {
                     const setter = Object.getOwnPropertyDescriptor(element, 'value')?.set || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value')?.set;
@@ -73,12 +69,10 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                     element.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
-                // নাম
                 const fInput = document.querySelector('input[name="firstname"]') || document.querySelector('input[name="first_name"]');
                 const lInput = document.querySelector('input[name="lastname"]') || document.querySelector('input[name="last_name"]');
                 if (fInput && lInput) { setVal(fInput, data.fName); setVal(lInput, data.lName); }
 
-                // জন্মতারিখ
                 const yr = document.querySelector('select[name="birthday_year"]');
                 const mo = document.querySelector('select[name="birthday_month"]');
                 const dy = document.querySelector('select[name="birthday_day"]');
@@ -89,15 +83,12 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                     dy.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
-                // ফোন নম্বর
                 const pInput = document.querySelector('input[name="reg_email__"]') || document.querySelector('input[type="tel"]');
                 if (pInput) { setVal(pInput, data.phone); }
 
-                // জেন্ডার (Male = 2)
                 const gRadio = document.querySelector('input[name="sex"][value="2"]');
                 if (gRadio) { gRadio.click(); gRadio.checked = true; gRadio.dispatchEvent(new Event('change', { bubbles: true })); }
 
-                // পাসওয়ার্ড
                 const pwdInput = document.querySelector('input[type="password"]') || document.querySelector('input[name="reg_passwd__"]');
                 if (pwdInput) { setVal(pwdInput, data.password); }
             }""", {
@@ -113,7 +104,6 @@ def run_real_facebook_automation(chat_id, password, phone_number):
             time.sleep(2)
             send_telegram_message(chat_id, "🖱️ Clicking Next / Sign Up button automatically...")
 
-            # নেক্সট বা সাইন আপ বাটনে ক্লিক করা
             page.evaluate("""() => {
                 const buttons = document.querySelectorAll('button, input[type="submit"], div[role="button"]');
                 for (let b of buttons) {
@@ -123,14 +113,13 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                         break;
                     }
                 }
-            """)
+            }""")
 
             send_telegram_message(chat_id, "🔍 Waiting for registration completion & capturing cookies...")
             
             uid = None
             cookie_string = ""
             
-            # সর্বোচ্চ ২০ সেকেন্ড সময় নিয়ে কুকি ও UID ট্র্যাক করা
             for _ in range(20):
                 time.sleep(1)
                 cookies = context.cookies()
@@ -155,7 +144,7 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                 )
                 send_telegram_message(chat_id, success_msg)
             else:
-                send_telegram_message(chat_id, f"⚠️ Automation executed on limited.facebook.com, but `c_user` cookie was not caught instantly. Number: +{phone_number}. (Check if OTP verification page appeared).")
+                send_telegram_message(chat_id, f"⚠️ Automation executed, but `c_user` cookie was not caught instantly. Number: +{phone_number}. (Check if verification is required).")
 
     except Exception as e:
         send_telegram_message(chat_id, f"❌ Automation Error: {str(e)}")
@@ -212,8 +201,17 @@ def home():
 
 def run_flask():
     port = int(os.environ.get("PORT", 3000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 if __name__ == '__main__':
+    # ফ্লাস্ক সার্ভার ব্যাকগ্রাউন্ডে স্টার্ট করা
     threading.Thread(target=run_flask, daemon=True).start()
-    bot.infinity_polling()
+    
+    # কনফ্লিক্ট এড়ানোর জন্য আগের যেকোনো ওয়েকবুক বা পোলিং ক্লিয়ার করে ফ্রেশ পোলিং শুরু করা
+    try:
+        bot.remove_webhook()
+    except:
+        pass
+        
+    print("Telegram Bot polling started safely...")
+    bot.infinity_polling(skip_pending=True)
