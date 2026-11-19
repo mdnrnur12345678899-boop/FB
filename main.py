@@ -6,7 +6,6 @@ from flask import Flask
 from telebot import TeleBot, types
 from playwright.sync_api import sync_playwright
 
-# --- CONFIGURATIONS ---
 BOT_TOKEN = "9022049219:AAHPbUaPzMeNXz-yWNT1s8c9z4OYW3OUNng"
 
 bot = TeleBot(BOT_TOKEN)
@@ -22,50 +21,87 @@ def send_telegram_message(chat_id, text, reply_markup=None):
     except Exception as e:
         print(f"Telegram Error: {e}")
 
-# --- REAL BROWSER AUTOMATION FLOW ---
 def run_real_facebook_automation(chat_id, password, phone_number):
     send_telegram_message(chat_id, f"📱 Processing Real Browser for: `+{phone_number}`\n🚀 Launching Chromium...")
 
     try:
         with sync_playwright() as p:
-            # হেッドレス মোডে রিয়েল ব্রাউজার রান করা
-            browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36"
+            # ব্রাউজার ওপেন করা (একটু বড় ভিউপোর্ট সাইজ দিয়ে যাতে মোবাইল রেসপন্সিভ সাইট ফুল লোড হয়)
+            browser = p.chromium.launch(
+                headless=True, 
+                args=[
+                    '--no-sandbox', 
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu'
+                ]
             )
+            
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+                viewport={"width": 390, "height": 844},
+                locale="en-US"
+            )
+            
             page = context.new_page()
 
             send_telegram_message(chat_id, "🌐 Navigating to Facebook Registration...")
-            page.goto("https://m.facebook.com/reg/", timeout=60000)
+            
+            # ফেসবুকের মূল ডেস্কটপ বা এম-বেসিক ট্রাই না করে সরাসরি রিং বা সাইনআপ পেজ হিট করা
+            try:
+                page.goto("https://www.facebook.com/r.php", timeout=60000, wait_until="domcontentloaded")
+            except:
+                page.goto("https://m.facebook.com/reg/", timeout=60000, wait_until="domcontentloaded")
 
-            # রেন্ডম নাম সিলেক্ট
+            # পেজ পুরোপুরি লোড হওয়ার জন্য ৫ সেকেন্ড অপেক্ষা
+            time.sleep(5)
+
+            send_telegram_message(chat_id, "✍️ Filling registration details...")
+
             names = [("David", "Smith"), ("James", "Johnson"), ("Mary", "Miller"), ("Patricia", "Davis"), ("John", "Williams")]
             f_name, l_name = random.choice(names)
 
-            # ফর্ম ফিলআপ
-            page.fill('input[name="firstname"]', f_name)
-            page.fill('input[name="lastname"]', l_name)
-            
-            page.select_option('select[name="birthday_year"]', str(random.randint(1995, 2003)))
-            page.select_option('select[name="birthday_month"]', str(random.randint(1, 12)))
-            page.select_option('select[name="birthday_day"]', str(random.randint(1, 28)))
-            
-            page.fill('input[name="reg_email__"]', phone_number)
-            page.fill('input[type="password"]', password)
-
+            # এলিমেন্টগুলো আসার জন্য সেফ ওয়েটিং (ডেস্কটপ এবং মোবাইল দুই ভার্সনের সিলেক্টর হ্যান্ডেল করার জন্য)
             try:
-                page.click('input[name="sex"][value="2"]') # Male
+                page.wait_for_selector('input[name="firstname"], input[name="first_name"]', timeout=15000)
             except:
                 pass
 
-            send_telegram_message(chat_id, "🖱️ Clicking Sign Up / Next button...")
+            # ফর্ম ফিলআপ (বিভিন্ন সিলেক্টর ট্রাই করবে)
             try:
-                page.click('button[type="submit"], input[type="submit"]', timeout=5000)
+                page.fill('input[name="firstname"], input[name="first_name"]', f_name)
+                page.fill('input[name="lastname"], input[name="last_name"]', l_name)
+            except Exception as ex:
+                print(f"Name fill error: {ex}")
+
+            # জন্মতারিখ
+            try:
+                page.select_option('select[name="birthday_year"], select#year', str(random.randint(1995, 2003)))
+                page.select_option('select[name="birthday_month"], select#month', str(random.randint(1, 12)))
+                page.select_option('select[name="birthday_day"], select#day', str(random.randint(1, 28)))
             except:
                 pass
 
-            # রিয়েল কুকি এবং UID খোঁজা (সর্বোচ্চ ১৫ সেকেন্ড অপেক্ষা করবে)
-            send_telegram_message(chat_id, "🔍 Waiting for response and extracting real UID/Cookies...")
+            # ফোন নম্বর ও পাসওয়ার্ড
+            try:
+                page.fill('input[name="reg_email__"], input[name="email"], input[name="reg_email_confirmation__"]', phone_number)
+                page.fill('input[type="password"], input[name="reg_passwd__"]', password)
+            except Exception as ex:
+                print(f"Phone/Pass fill error: {ex}")
+
+            # জেন্ডার (Male = 2)
+            try:
+                page.click('input[name="sex"][value="2"], input#u_0_5_', timeout=3000)
+            except:
+                pass
+
+            send_telegram_message(chat_id, "🖱️ Clicking Register / Sign Up button...")
+            try:
+                page.click('button[type="submit"], input[type="submit"], button[name="websubmit"]', timeout=5000)
+            except:
+                pass
+
+            send_telegram_message(chat_id, "🔍 Capturing Real UID & Cookies...")
             uid = None
             cookie_string = ""
             
@@ -93,12 +129,11 @@ def run_real_facebook_automation(chat_id, password, phone_number):
                 )
                 send_telegram_message(chat_id, success_msg)
             else:
-                send_telegram_message(chat_id, f"⚠️ Automation finished, but `c_user` cookie (UID) was not captured. Number: +{phone_number}")
+                send_telegram_message(chat_id, f"⚠️ Automation finished, but `c_user` cookie was not captured. Number: +{phone_number}. (Account might need OTP or verification).")
 
     except Exception as e:
         send_telegram_message(chat_id, f"❌ Real Browser Automation Error: {str(e)}")
 
-# --- TELEGRAM BOT HANDLERS ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -145,7 +180,6 @@ def handle_text(message):
         bot.send_message(chat_id, f"⏳ Initializing real browser for `+{clean_phone}`...")
         threading.Thread(target=run_real_facebook_automation, args=(chat_id, password, clean_phone)).start()
 
-# --- KEEP-ALIVE FLASK SERVER FOR RENDER ---
 @app.route('/')
 def home():
     return "Render Playwright Bot is live and running!"
@@ -155,8 +189,5 @@ def run_flask():
     app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
-    # ফ্লাস্ক ব্যাকগ্রাউন্ডে রান করা (Render পোর্ট এলাইভ রাখার জন্য)
     threading.Thread(target=run_flask, daemon=True).start()
-    
-    print("Telegram Bot polling with Real Browser support...")
     bot.infinity_polling()
